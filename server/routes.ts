@@ -139,7 +139,8 @@ export async function registerRoutes(app: Express) {
       try {
         const geoResponse = await fetch(`https://ipapi.co/${ip}/json/`);
         if (geoResponse.ok) {
-          const geoData = await geoResponse.json();
+          // json() can return unknown under strict typings; cast to any for now
+          const geoData: any = await geoResponse.json();
           city = geoData.city;
           country = geoData.country_name;
           countryCode = geoData.country_code;

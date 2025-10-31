@@ -1,11 +1,11 @@
 // Vercel Serverless function wrapper for the Express app.
 // Vercel will call this default export for each request.
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createApp } from '../server/app';
 
 let cachedApp: any = null;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+// Keep the handler untyped to avoid @vercel/node type dependency in the build.
+export default async function handler(req: any, res: any) {
   if (!cachedApp) {
     cachedApp = await createApp();
   }
