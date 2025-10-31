@@ -1,39 +1,24 @@
-// Vercel Serverless function wrapper for the Express app.
-// Vercel will call this default export for each request.
-import { createApp } from '../server/app';
+// api/index.ts
+import express from "express";
+import cors from "cors";
+import router from "../server/routes"; // optional if you have routes
 
-let cachedApp: any = null;
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-// Keep the handler untyped to avoid @vercel/node type dependency in the build.
-export default async function handler(req: any, res: any) {
-  try {
-    console.log('Handler called:', req.method, req.url);
-    
-    if (!process.env.PROJECT_ID) {
-      console.error('Missing required env vars. Make sure Firebase config is set in Vercel.');
-      return res.status(500).json({ 
-        error: 'Server configuration incomplete. Contact administrator.' 
-      });
-    }
+// Example route
+app.get("/", (req, res) => {
+  res.send("✅ Express + Vercel is working!");
+});
 
-    if (!cachedApp) {
-      console.log('Creating Express app instance...');
-      try {
-        cachedApp = await createApp();
-        console.log('Express app created successfully');
-      } catch (e) {
-        console.error('Failed to create Express app:', e);
-        throw e;
-      }
-    }
+// Example nested route
+app.get("/hello", (req, res) => {
+  res.json({ message: "Hello from Express!" });
+});
 
-    // Express apps are callable (req, res) => void
-    return cachedApp(req, res);
-  } catch (error) {
-    console.error('Serverless function error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
-    });
-  }
-}
+// If you have external routes:
+app.use("/api", router);
+
+// DO NOT call app.listen() here — Vercel does that automatically
+export default app;

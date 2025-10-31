@@ -7,7 +7,7 @@ import { authenticateUser } from "./middleware/auth";
 import cors from 'cors';
 
 
-export async function registerRoutes(app: Express) {
+export default async function registerRoutes(app: Express) {
   // ✅ Allow requests from your frontend
   app.use(cors({
     origin: 'http://localhost:5173',  // your React app’s address
