@@ -10,7 +10,7 @@ import cors from 'cors';
 export default async function registerRoutes(app: Express) {
   // ✅ Allow requests from your frontend
   app.use(cors({
-    origin: 'http://localhost:5173',  // your React app’s address
+    origin: 'https://qrion.vercel.app',  // your React app’s address
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   }));
