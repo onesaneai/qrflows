@@ -10,7 +10,7 @@ import path from "path";
 dotenv.config({ path: path.join(process.cwd(), "server", ".env") });
 
 import express from "express";
-import { registerRoutes } from "./routes";
+import registerRoutes from "./routes.js";  // Add .js extension for ESM
 
 // Extend IncomingMessage so middleware that sets rawBody compiles
 declare module 'http' {

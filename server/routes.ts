@@ -1,9 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertQRCodeSchema, insertVisitSchema } from "@shared/schema";
+import { storage } from "./storage.js";
+import { insertQRCodeSchema, insertVisitSchema } from "../shared/schema.js";
 import { UAParser } from "ua-parser-js";
-import { authenticateUser } from "./middleware/auth";
+import { authenticateUser } from "./middleware/auth.js";
 import cors from 'cors';
 
 
