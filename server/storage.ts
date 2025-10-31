@@ -5,9 +5,9 @@ import {
   type InsertQRCode,
   type Visit,
   type InsertVisit,
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { randomUUID } from "crypto";
-import { database } from "./firebase-admin";
+import { database } from "./firebase-admin.js";
 
 export interface IStorage {
   // User methods
