@@ -38,10 +38,10 @@ export class FirebaseStorage implements IStorage {
       .orderByChild('username')
       .equalTo(username)
       .once('value');
-    
+
     const users = snapshot.val();
     if (!users) return undefined;
-    
+
     const userId = Object.keys(users)[0];
     return users[userId];
   }
@@ -71,16 +71,16 @@ export class FirebaseStorage implements IStorage {
   async getQRCodesByUserId(userId: string): Promise<QRCode[]> {
     const userQRCodesSnapshot = await database.ref(`userQRCodes/${userId}`).once('value');
     const qrCodeIds = userQRCodesSnapshot.val();
-    
+
     if (!qrCodeIds) return [];
-    
+
     const qrCodes: QRCode[] = [];
     for (const id of Object.keys(qrCodeIds)) {
       const snapshot = await database.ref(`qrCodes/${id}`).once('value');
       const qrCode = snapshot.val();
       if (qrCode) qrCodes.push(qrCode);
     }
-    
+
     return qrCodes.sort((a, b) => b.createdAt - a.createdAt);
   }
 
@@ -95,6 +95,69 @@ export class FirebaseStorage implements IStorage {
     if (!id) return undefined;
     return this.getQRCodeById(id);
   }
+
+  async deleteQRCode(id: string): Promise<QRCode | undefined> {
+    try {
+      const qrSnapshot = await database.ref(`qrCodes/${id}`).once('value');
+      const qrCode: QRCode | null = qrSnapshot.val();
+      if (!qrCode) return undefined;
+
+      const updates: Record<string, null> = {};
+      updates[`qrCodes/${id}`] = null;
+      if (qrCode.slug) updates[`slugIndex/${qrCode.slug}`] = null;
+      if (qrCode.userId) updates[`userQRCodes/${qrCode.userId}/${id}`] = null;
+
+      const qrCodeVisitsSnapshot = await database.ref(`qrCodeVisits/${id}`).once('value');
+      const visitIds = qrCodeVisitsSnapshot.val();
+      if (visitIds) {
+        for (const visitId of Object.keys(visitIds)) {
+          updates[`visits/${visitId}`] = null;
+        }
+      }
+      updates[`qrCodeVisits/${id}`] = null;
+
+      await database.ref().update(updates);
+      return qrCode;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async updateQRCode(
+    id: string,
+    title: string,
+    targetUrl: string,
+    color: string
+  ): Promise<QRCode | undefined> {
+    try {
+      const qrSnapshot = await database.ref(`qrCodes/${id}`).once('value');
+      const qrCode: QRCode | null = qrSnapshot.val();
+      if (!qrCode) return undefined;
+
+      // Prepare updated fields
+      const updatedQRCode = {
+        ...qrCode,
+        title,
+        targetUrl,
+        color,
+        updatedAt: Date.now(),
+      };
+
+      // Update only the qrCode record
+      await database.ref(`qrCodes/${id}`).update({
+        title,
+        targetUrl,
+        color,
+        updatedAt: Date.now(),
+      });
+
+      return updatedQRCode;
+    } catch (error) {
+      console.error("Error updating QR code:", error);
+      return undefined;
+    }
+  }
+
 
   // Visit methods
   async createVisit(insertVisit: InsertVisit): Promise<Visit> {
@@ -117,16 +180,16 @@ export class FirebaseStorage implements IStorage {
   async getVisitsByQRCodeId(qrCodeId: string): Promise<Visit[]> {
     const qrCodeVisitsSnapshot = await database.ref(`qrCodeVisits/${qrCodeId}`).once('value');
     const visitIds = qrCodeVisitsSnapshot.val();
-    
+
     if (!visitIds) return [];
-    
+
     const visits: Visit[] = [];
     for (const id of Object.keys(visitIds)) {
       const snapshot = await database.ref(`visits/${id}`).once('value');
       const visit = snapshot.val();
       if (visit) visits.push(visit);
     }
-    
+
     return visits.sort((a, b) => b.timestamp - a.timestamp);
   }
 }

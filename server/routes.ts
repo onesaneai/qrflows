@@ -10,7 +10,7 @@ import cors from 'cors';
 export default async function registerRoutes(app: Express) {
   // ✅ Allow requests from your frontend
   app.use(cors({
-    origin: 'https://qrion.vercel.app',  // your React app’s address
+    origin: process.env.FRONTEND_URL,  // your React app’s address
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   }));
@@ -111,6 +111,133 @@ export default async function registerRoutes(app: Express) {
     }
   });
 
+  // Delete the QR code and its data
+  app.delete("/api/qr-codes/:id/delete", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // 1️⃣ Validate ID
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "QR code ID is required.",
+        });
+      }
+
+      // 2️⃣ Check if QR code exists
+      const qrCode = await storage.getQRCodeById(id);
+      if (!qrCode) {
+        return res.status(404).json({
+          success: false,
+          message: "QR code not found.",
+        });
+      }
+
+      // 3️⃣ Authorization: ensure the QR code belongs to the user
+      if (req.user?.uid !== qrCode.userId) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to delete this QR code.",
+        });
+      }
+
+      // 4️⃣ Attempt to delete from storage
+      const deletedQRCode = await storage.deleteQRCode(id);
+      if (!deletedQRCode) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to delete QR code. Please try again later.",
+        });
+      }
+
+      // 5️⃣ Send success response
+      return res.status(200).json({
+        success: true,
+        message: "QR code deleted successfully.",
+        data: {
+          id: deletedQRCode.id,
+          title: deletedQRCode.title,
+          targetUrl: deletedQRCode.targetUrl,
+        },
+      });
+
+    } catch (error: any) {
+      console.error("Error deleting QR code:", error);
+      return res.status(500).json({
+        success: false,
+        message: "An unexpected error occurred while deleting the QR code.",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+  );
+
+  app.put("/api/qr-codes/:id/update", authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { title, targetUrl, color } = req.body;
+
+      // 1. Basic validation
+      if (!title || !targetUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "Both 'title' and 'targetUrl' are required.",
+        });
+      }
+
+      // 2. Validate color format (optional)
+      if (color && !/^#([0-9A-F]{3}){1,2}$/i.test(color)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid color format. Use HEX (e.g., #3b82f6).",
+        });
+      }
+
+      // 3. Fetch existing QR code
+      const existingQRCode = await storage.getQRCodeById(id);
+      if (!existingQRCode) {
+        return res.status(404).json({
+          success: false,
+          message: "QR code not found.",
+        });
+      }
+
+      // 4. Optional: Ensure logged-in user owns this QR code
+      if (req.user?.uid !== existingQRCode.userId) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to update this QR code.",
+        });
+      }
+
+      // 5. Perform update
+      const updatedQRCode = await storage.updateQRCode(id, title, targetUrl, color);
+      if (!updatedQRCode) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to update QR code. Please try again.",
+        });
+      }
+
+      // 6. Return success
+      return res.status(200).json({
+        success: true,
+        message: "QR code updated successfully.",
+        data: updatedQRCode,
+      });
+
+    } catch (error: any) {
+      console.error("Error in /api/qr-codes/:id/update:", error);
+      return res.status(500).json({
+        success: false,
+        message: "An unexpected error occurred while updating the QR code.",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+  );
+
+
   // Redirect route with tracking (public - no auth required)
   app.get("/r/:slug", async (req: Request, res: Response) => {
     try {
@@ -125,7 +252,7 @@ export default async function registerRoutes(app: Express) {
 
       // Get visitor IP
       let ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-
+      console.log("The IP address is : ", ip)
       // Parse User-Agent for device info
       const parser = new UAParser(req.headers['user-agent']);
       const deviceType = parser.getDevice().type || 'desktop';
@@ -169,7 +296,7 @@ export default async function registerRoutes(app: Express) {
       res.status(500).send("Error processing redirect");
     }
   });
-  
+
 
   return app;
 }
