@@ -262,32 +262,37 @@ export default async function registerRoutes(app: Express) {
       let city = null;
       let country = null;
       let countryCode = null;
-
+      ip = '103.248.173.158'
       try {
-        const geoResponse = await fetch(`https://ipapi.co/${ip}/json/`);
+        const geoResponse = await fetch(`https://api.ipgeolocation.io/v2/ipgeo?apiKey=d6317d380b27445c9703dfe7c4fb2b77&ip=${ip}`);
         if (geoResponse.ok) {
           // json() can return unknown under strict typings; cast to any for now
-          const geoData: any = await geoResponse.json();
+          let geoData: any = await geoResponse.json();
+          geoData = geoData.location
           city = geoData.city;
           country = geoData.country_name;
           countryCode = geoData.country_code;
+          console.log("Data is : ",geoData.location)
+          await storage.createVisit({
+            qrCodeId: qrCode.id,
+            ip,
+            city,
+            country,
+            countryCode,
+            device,
+          });
+
+
         }
         else {
+          // return res.json({ "data": geoResponse.statusText })
           console.error('Failed to fetch geolocation data:', geoResponse.statusText);
         }
       } catch (error) {
+        // return res.json({ "data": error })
         console.error('Failed to fetch geolocation:', error);
       }
 
-      // Log the visit
-      await storage.createVisit({
-        qrCodeId: qrCode.id,
-        ip,
-        city,
-        country,
-        countryCode,
-        device,
-      });
 
       // Redirect to target URL
       res.redirect(qrCode.targetUrl);
